@@ -18,11 +18,15 @@ library(TCA) # TCA
 
 ## 
 args <- commandArgs(trailingOnly = TRUE) 
-split <- as.numeric(args[1])
+method <- args[1]
+split <- as.numeric(args[2])
+# method <- "tca"
 # split <- 1
 split1 <- (split - 1) * 10 + 1
 split2 <- split * 10
 message("split = ", split1, " to ", split2)
+
+stopifnot(method %in% c("celldmc", "tca", "tcareg"))
 
 # ---------------------------------------------------------------
 # Setup
@@ -61,10 +65,6 @@ cell_counts2 <- as.matrix(dplyr::select(cell_counts, -IID))
 rownames(cell_counts2) <- cell_counts$IID
 cell_counts2[sign(cell_counts2) == -1] <- 0
 
-# ---------------------------------------------------------------
-# tests
-# ---------------------------------------------------------------
-
 ## Need to re-estimate cell props so they all add up to 1 for TCA to work...
 reest_cell_props <- function(cc_mat)
 {
@@ -81,35 +81,87 @@ phenotypes_test <- phenotypes[1:50, ]
 cell_counts_test <- reest_cell_props(cell_counts_test)
 rownames(cell_counts_test) <- colnames(meth_test)
 
-## CellDMC
-start_time <- proc.time()
-celldmc_res <- lapply(p_to_keep, function(phen) {
-	print(phen)
-	CellDMC(meth_test, phenotypes_test[[phen]], cell_counts_test)
-})
-names(celldmc_res) <- p_to_keep
-time_taken <- proc.time() - start_time
-time_taken # ~30 mins
+# meth_test <- meth_test[1:50, 1:50]
 
-## TCA
-start_time <- proc.time()
-tca_res <- lapply(p_to_keep, function(phen) {
-	print(phen)
-	tca_phen <- matrix(phenotypes_test[[phen]])
-	colnames(tca_phen) <- phen
-	rownames(tca_phen) <- phenotypes_test$Sample_Name
-	out <- tca(X = meth_test, C1 = tca_phen, W = cell_counts_test)
+# ---------------------------------------------------------------
+# tests
+# ---------------------------------------------------------------
+
+## CellDMC function
+run_celldmc <- function(p_to_keep)
+{
+	out <- lapply(p_to_keep, function(phen) {
+		print(phen)
+		CellDMC(meth_test, phenotypes_test[[phen]], cell_counts_test)
+	})
+	names(out) <- p_to_keep
 	return(out)
-})
-names(tca_res) <- p_to_keep
-time_taken <- proc.time() - start_time
-time_taken # ~100 mins
+}
+
+## TCA function
+run_tca <- function(p_to_keep)
+{
+	out <- lapply(p_to_keep, function(phen) {
+		print(phen)
+		tca_phen <- matrix(phenotypes_test[[phen]])
+		colnames(tca_phen) <- phen
+		rownames(tca_phen) <- phenotypes_test$Sample_Name
+		out <- tca(X = meth_test, C1 = tca_phen, W = cell_counts_test)
+		return(out)
+	})
+	names(out) <- p_to_keep
+	return(out)
+}
+
+## TCA-reg function
+run_tcareg <- function(p_to_keep)
+{
+	tca_mdl <- tca(X = meth_test, W = cell_counts_test, constrain_mu = TRUE)
+	out <- lapply(p_to_keep, function(phen) {
+		print(phen)
+		tca_phen <- matrix(phenotypes_test[[phen]])
+		colnames(tca_phen) <- phen
+		rownames(tca_phen) <- phenotypes_test$Sample_Name
+		out <- tcareg(X = meth_test, tca.mdl = tca_mdl, y = tca_phen, test = "marginal_conditional")
+		return(out)
+	})
+	names(out) <- p_to_keep
+	return(out)
+}
+
+function_name <- paste0("run_", method)
+sim_func <- match.fun(function_name)
+res <- sim_func(p_to_keep)
 
 # ---------------------------------------------------------------
 # output results
 # ---------------------------------------------------------------
 
-
+## extract results
+extract_results <- function(p_to_keep, method, res, sig_val = 1e-7)
+{
+	cell_types <- colnames(cell_counts_test)
+	lamb_out <- lapply(p_to_keep, function(phen) {
+		p_res <- res[[phen]]
+		out <- map_dfr(cell_types, function(ct) {
+			if (method == "celldmc") {
+				p <- p_res$coe[[ct]]$p
+			} else if (method == "tca") {
+				column <- paste0(ct, ".", phen)
+				p <- p_res$gammas_hat_pvals[, column]
+			} else if (method == "tcareg") {
+				p <- p_res$pvals[, ct]
+			}
+			out <- get_lambda(p)
+			out$n_sig <- sum(p < sig_val)
+			return(out)
+		})	%>% 
+			mutate(cell = cell_types)
+		return(out)	
+	})
+	names(lamb_out) <- p_to_keep
+	return(lamb_out)
+}
 
 ## lambda
 get_lambda <- function(pvals) {
@@ -123,49 +175,14 @@ get_lambda <- function(pvals) {
 	# median(qchisq(pvals, df = 1, lower.tail = F), na.rm = T) / qchisq(0.5, 1)
 }
 
-cell_types <- names(celldmc_res[[p_to_keep[1]]]$coe)
-
-celldmc_lamb <- lapply(p_to_keep, function(phen) {
-	res <- celldmc_res[[phen]]
-	out <- map_dfr(cell_types, function(ct) {
-		p <- res$coe[[ct]]$p
-		out <- get_lambda(p)
-		out$n_sig <- sum(p < 1e-7)
-		return(out)
-	}) %>% 
-		mutate(cell = cell_types)
-	return(out)
-})
-names(celldmc_lamb) <- p_to_keep
-
-tca_lamb <- lapply(p_to_keep, function(phen) {
-	res <- tca_res[[phen]]
-	out <- map_dfr(cell_types, function(ct) {
-		column <- paste0(ct, ".", phen)
-		p <- res$gammas_hat_pvals[, column]
-		out <- get_lambda(p)
-		out$n_sig <- sum(p < 1e-7)
-		return(out)
-	}) %>% 
-		mutate(cell = cell_types)
-	return(out)
-})
-names(tca_lamb) <- p_to_keep
-
+out_res <- extract_results(p_to_keep, method, res)
 
 ## save it all! 
 out_dir <- "results/temp"
-out_file <- paste0("celldmc_res_split", split, ".RData")
-save(celldmc_lamb, file = file.path(out_dir, out_file))
-
-out_file <- paste0("tca_res_split", split, ".RData")
-save(tca_lamb, file = file.path(out_dir, out_file))
+out_file <- paste0(method, "_res_split", split, ".RData")
+save(out_res, file = file.path(out_dir, out_file))
 
 print("FIN!")
-
-
-
-
 
 
 
