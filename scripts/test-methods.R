@@ -11,22 +11,26 @@
 ## pkgs
 # BiocManager::install("EpiDISH")
 # install.packages("TCA", dependencies = TRUE)
+# install.packages("omicwas")
+# BiocManager::install("TOAST") 
 library(tidyverse) # tidy code and data
 library(EpiDISH) # CellDMC 
 library(TCA) # TCA
+library(omicwas) # omicwas
+library(TOAST) # TOAST
 # library(usefunc) # own package of useful functions
 
 ## 
 args <- commandArgs(trailingOnly = TRUE) 
 method <- args[1]
 split <- as.numeric(args[2])
-# method <- "tca"
+# method <- "toast"
 # split <- 1
 split1 <- (split - 1) * 10 + 1
 split2 <- split * 10
 message("split = ", split1, " to ", split2)
 
-stopifnot(method %in% c("celldmc", "tca", "tcareg"))
+stopifnot(method %in% c("celldmc", "tca", "tcareg", "omicwas", "toast"))
 
 # ---------------------------------------------------------------
 # Setup
@@ -129,9 +133,46 @@ run_tcareg <- function(p_to_keep)
 	return(out)
 }
 
+## omicwas function
+run_omicwas <- function(p_to_keep)
+{
+	out <- lapply(p_to_keep, function(phen) {
+		omicwas_phen <- matrix(phenotypes_test[[phen]])
+		colnames(omicwas_phen) <- phen
+		rownames(omicwas_phen) <- phenotypes_test$Sample_Name
+		res <- ctassoc(X = omicwas_phen, W = cell_counts_test, Y = meth_test, 
+					   test = "nls.logit", regularize = TRUE)
+		out <- res$coefficients %>% dplyr::filter(term == phen)
+		return(out)
+	})
+	names(out) <- p_to_keep
+	return(out)	
+}
+
+## toast function
+run_toast <- function(p_to_keep)
+{
+	out <- lapply(p_to_keep, function(phen) {
+		print(phen)
+		toast_phen <- data.frame(pheno = phenotypes_test[[phen]])
+		rownames(toast_phen) <- phenotypes_test$Sample_Name
+		Design_out <- makeDesign(toast_phen, cell_counts_test)
+		fitted_model <- fitModel(Design_out, meth_test)
+		res <- csTest(fitted_model, coef = "pheno", 
+		                    cell_type = NULL, contrast_matrix = NULL)
+		return(res)
+	})
+	names(out) <- p_to_keep
+	return(out)
+}
+
 function_name <- paste0("run_", method)
 sim_func <- match.fun(function_name)
+# p_to_keep <- p_to_keep[1]
+start_time <- proc.time()
 res <- sim_func(p_to_keep)
+time_taken <- proc.time() - start_time
+time_taken
 
 # ---------------------------------------------------------------
 # output results
@@ -151,6 +192,10 @@ extract_results <- function(p_to_keep, method, res, sig_val = 1e-7)
 				p <- p_res$gammas_hat_pvals[, column]
 			} else if (method == "tcareg") {
 				p <- p_res$pvals[, ct]
+			} else if (method == "omicwas") {
+				p <- p_res[p_res$celltype == ct, "p.value", drop = TRUE]
+			} else if (method == "toast") {
+				p <- p_res[[ct]]$p_value
 			}
 			out <- get_lambda(p)
 			out$n_sig <- sum(p < sig_val)
