@@ -24,7 +24,7 @@ library(TOAST) # TOAST
 args <- commandArgs(trailingOnly = TRUE) 
 method <- args[1]
 split <- as.numeric(args[2])
-# method <- "toast"
+# method <- "omicwas"
 # split <- 1
 split1 <- (split - 1) * 10 + 1
 split2 <- split * 10
@@ -36,17 +36,9 @@ stopifnot(method %in% c("celldmc", "tca", "tcareg", "omicwas", "toast"))
 # Setup
 # ---------------------------------------------------------------
 
-## Samplesheet
-samplesheet_file <- "/panfs/panasas01/sscm/ms13525/aries-release-v4/data/samplesheet/data.Robj"
-load(samplesheet_file)
-# just mums
-samplesheet <- samplesheet[samplesheet$time_point == "FOM", ]
-
 ## DNAm data
-aries_meth_file <- "/panfs/panasas01/sscm/ms13525/aries-release-v4/data/betas/data.Robj"
+aries_meth_file <- "data/aries_fom.RData" # made this instead of using normal files as R kept crashing with others - couldn't allocate memory
 load(aries_meth_file)
-meth <- beta[, samplesheet$Sample_Name]
-rm(beta)
 
 ## Cell counts
 cc_file="/panfs/panasas01/sscm/ms13525/aries-release-v4/data/derived/cellcounts/blood gse35069/data.txt"
@@ -54,7 +46,8 @@ cell_counts <- read_tsv(cc_file) %>%
 	dplyr::filter(IID %in% colnames(meth))
 
 phenotypes <- map_dfc(1:1000, function(x) {set.seed(x); sample(c(0,1), ncol(meth), replace=T)})
-colnames(phenotypes) <- paste0("p", 1:1000)
+p_names <- paste0("p", 1:1000)
+colnames(phenotypes) <- p_names
 p_to_keep <- paste0("p", split1:split2)
 phenotypes <- dplyr::select(phenotypes, one_of(p_to_keep))
 
@@ -137,10 +130,13 @@ run_tcareg <- function(p_to_keep)
 run_omicwas <- function(p_to_keep)
 {
 	out <- lapply(p_to_keep, function(phen) {
+		seed <- which(p_names %in% phen)
+		set.seed(seed)
+		Y <- meth_test[sample(1:nrow(meth_test), 1000), ]
 		omicwas_phen <- matrix(phenotypes_test[[phen]])
 		colnames(omicwas_phen) <- phen
 		rownames(omicwas_phen) <- phenotypes_test$Sample_Name
-		res <- ctassoc(X = omicwas_phen, W = cell_counts_test, Y = meth_test, 
+		res <- ctassoc(X = omicwas_phen, W = cell_counts_test, Y = Y, 
 					   test = "nls.logit", regularize = TRUE)
 		out <- res$coefficients %>% dplyr::filter(term == phen)
 		return(out)
@@ -194,6 +190,7 @@ extract_results <- function(p_to_keep, method, res, sig_val = 1e-7)
 				p <- p_res$pvals[, ct]
 			} else if (method == "omicwas") {
 				p <- p_res[p_res$celltype == ct, "p.value", drop = TRUE]
+				sig_val <- 0.05/1000
 			} else if (method == "toast") {
 				p <- p_res[[ct]]$p_value
 			}
@@ -207,6 +204,7 @@ extract_results <- function(p_to_keep, method, res, sig_val = 1e-7)
 	names(lamb_out) <- p_to_keep
 	return(lamb_out)
 }
+
 
 ## lambda
 get_lambda <- function(pvals) {
@@ -228,7 +226,6 @@ out_file <- paste0(method, "_res_split", split, ".RData")
 save(out_res, file = file.path(out_dir, out_file))
 
 print("FIN!")
-
 
 
 
