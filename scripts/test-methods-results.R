@@ -46,8 +46,8 @@ fdr_plot_list <- lapply(celltypes, function(ct) {
 	ggplot(ct_res, aes(x = phenotype, y = n_sig, colour = method)) +
 		geom_point() +
 		scale_colour_manual(values = pal) + 
-		labs(y = "False positives") +
-		theme_bw() + 
+		labs(y = "False positives", title = ct) +
+		theme_classic() + 
 		theme(axis.text.x = element_blank(), axis.title.x = element_blank(), axis.ticks = element_blank()) 
 })
 names(fdr_plot_list) <- celltypes
@@ -56,8 +56,9 @@ leg <- get_legend(fdr_plot_list[[1]])
 
 fdr_plot_list <- lapply(fdr_plot_list, function(p) p + theme(legend.position = "none"))
 
-prow <- plot_grid(plotlist = fdr_plot_list, nrow = length(celltypes)/2, 
-				  labels = celltypes)
+# ggsave("results/testplot.pdf", plot = fdr_plot_list[[1]])
+
+prow <- plot_grid(plotlist = fdr_plot_list, nrow = length(celltypes)/2)
 
 out_plots <- plot_grid(prow, leg, ncol = 2, rel_widths = c(3, .4))
 ggsave("results/celldmc-tca-false-positives.pdf", plot = out_plots)
