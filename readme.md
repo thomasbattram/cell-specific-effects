@@ -8,6 +8,10 @@ Notes on the different methods from their respective papers can be found in the 
 
 [`previous-work`](previous-work) contains work done by a summer student of Matt's that assessed how well TCA and HIRE tend to estimate actual cell-types. 
 
-The false positive rate of TCA and CellDMC can be tested by running [`test-methods.R`](scripts/test-methods.R) - currently this is just when both models are assuming DNAm is the outcome. To do this a submission script will need to be made for bluecrystal.
+The false positive rate of the methods can be tested by running [`test-methods.R`](scripts/test-methods.R) - this requires submission to bc3. To plot the results run through [`test-methods-results.R`](scripts/test-methods-results.R).
 
-To do - need to make slides to show the performance of the models and discuss what is the best one to take forward
+To do:
+
+0. Streamline processes using snakemake (maybe)
+1. Test the methods on real phenotypes to see if they tend to output the same results
+2. Generate a report
