@@ -6,7 +6,7 @@ import os
 wd = os.getcwd()
 ARIES_DATA_DIR=""
 METHODS = ["celldmc", "tca", "tcareg", "omicwas", "toast"]
-SPLIT = list(range(1, 11))
+SPLIT = list(range(1, 101))
 
 rule all:
     input:
