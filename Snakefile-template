@@ -22,7 +22,7 @@ rule clean_meth:
     output:
         wd + "/data/aries_fom.RData",
     shell:
-        'echo $HOSTNAME; Rscript {input.script} "{input.meth}" "{input.samplesheet}" "{input.cc}" "{input.detp}" "{output}"'
+        'echo $HOSTNAME; Rscript {input.script} "{input.meth}" "{input.samplesheet}" "{input.detp}" "{output}"'
 
 
 # rule install_pkgs:
@@ -31,12 +31,12 @@ rule clean_meth:
 rule sims:
     input:
         script = wd + "/scripts/test-methods.R", 
-        meth = wd + "data/aries_fom.RData", 
+        meth = wd + "/data/aries_fom.RData", 
         cc = ARIES_DATA_DIR + "/methylation/aries-v4/aries-blood-cell-counts.txt",
     output:
         expand(wd + "/results/temp/{method}_res_split{split}.RData", method = METHODS, split = SPLIT)
     shell:
-        'echo $HOSTNAME; Rscript {input.script} "{output}"'
+        'echo $HOSTNAME; Rscript {input.script} "{input.meth}" "{input.cc}" "{output}"'
 
 # rule sims_res:
 #     input:
