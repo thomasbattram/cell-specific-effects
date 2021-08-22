@@ -3,13 +3,15 @@
 import os
 
 ## Just the directory on bluepebble used for this analysis
-wd = os.getwd()
+wd = os.getcwd()
 ARIES_DATA_DIR=""
 METHODS = ["celldmc", "tca", "tcareg", "omicwas", "toast"]
 SPLIT = list(range(1, 11))
+
 rule all:
     input:
-        expand()
+        wd + "/data/aries_fom.RData", 
+        expand(wd + "/results/temp/", method, "_res_split", split, ".RData", method = METHODS, split = SPLIT)
 
 rule clean_meth:
     input:
@@ -18,7 +20,7 @@ rule clean_meth:
         samplesheet = ARIES_DATA_DIR + "/methylation/aries-v4/aries-samplesheet.Robj", 
         detp = ARIES_DATA_DIR + "/methylation/aries-v4/aries-detp-v4.Robj",
     output:
-        wd + "data/aries_fom.RData",
+        wd + "/data/aries_fom.RData",
     shell:
         'echo $HOSTNAME; Rscript {input.script} "{input.meth}" "{input.samplesheet}" "{input.cc}" "{input.detp}" "{output}"'
 
@@ -36,13 +38,13 @@ rule sims:
     shell:
         'echo $HOSTNAME; Rscript {input.script} "{output}"'
 
-rule sims_res:
-    input:
-        script = wd + "/scripts/test-methods-results.R", 
-        inputs = expand(wd + "/results/temp/", method, "_res_split", split, ".RData", method = METHODS, split = SPLIT)
-    output:
+# rule sims_res:
+#     input:
+#         script = wd + "/scripts/test-methods-results.R", 
+#         inputs = expand(wd + "/results/temp/", method, "_res_split", split, ".RData", method = METHODS, split = SPLIT)
+#     output:
         
-    shell:
-        'echo $HOSTNAME; Rscript {input.script} "{output}"'
+#     shell:
+#         'echo $HOSTNAME; Rscript {input.script} "{output}"'
 
 
