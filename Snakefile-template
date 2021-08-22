@@ -34,7 +34,7 @@ rule sims:
         meth = wd + "/data/aries_fom.RData", 
         cc = ARIES_DATA_DIR + "/methylation/aries-v4/aries-blood-cell-counts.txt",
     output:
-        expand(wd + "/results/temp/{method}_res_split{split}.RData", method = METHODS, split = SPLIT)
+        wd + "/results/temp/{method}_res_split{split}.RData"
     shell:
         'echo $HOSTNAME; Rscript {input.script} "{input.meth}" "{input.cc}" "{output}"'
 

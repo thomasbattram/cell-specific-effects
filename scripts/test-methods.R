@@ -18,30 +18,33 @@ library(EpiDISH) # CellDMC
 library(TCA) # TCA
 library(omicwas) # omicwas
 library(TOAST) # TOAST
-# library(usefunc) # own package of useful functions
+library(usefunc) # own package of useful functions - devtools::install_github("thomasbattram/usefunc")
 
-## 
+## args
 args <- commandArgs(trailingOnly = TRUE) 
-method <- args[1]
-split <- as.numeric(args[2])
-# method <- "omicwas"
-# split <- 1
+meth_file <- args[1]
+cc_file <- args[2]
+outfile <- args[3]
+
+## data
+methods <- c("celldmc", "tca", "tcareg", "omicwas", "toast")
+get_method <- function(outfile) str_extract(outfile, methods)[!is.na(str_extract(outfile, methods))]
+method <- get_method(outfile)
+
+get_split <- function(outfile) as.numeric(str_extract(outfile, "[0-9]"))
+split <- get_split(outfile)
 split1 <- (split - 1) * 10 + 1
 split2 <- split * 10
 message("split = ", split1, " to ", split2)
-
-stopifnot(method %in% c("celldmc", "tca", "tcareg", "omicwas", "toast"))
 
 # ---------------------------------------------------------------
 # Setup
 # ---------------------------------------------------------------
 
 ## DNAm data
-aries_meth_file <- "data/aries_fom.RData" # made this instead of using normal files as R kept crashing with others - couldn't allocate memory
-load(aries_meth_file)
+meth <- new_load(meth_file)
 
 ## Cell counts
-cc_file="/panfs/panasas01/sscm/ms13525/aries-release-v4/data/derived/cellcounts/blood gse35069/data.txt"
 cell_counts <- read_tsv(cc_file) %>%
 	dplyr::filter(IID %in% colnames(meth))
 
@@ -77,6 +80,10 @@ phenotypes_test <- phenotypes[1:50, ]
 
 cell_counts_test <- reest_cell_props(cell_counts_test)
 rownames(cell_counts_test) <- colnames(meth_test)
+
+if (method == "omicwas") {
+	meth_test <- meth_test[1:50, 1:50]	
+}
 
 # meth_test <- meth_test[1:50, 1:50]
 
@@ -221,9 +228,7 @@ get_lambda <- function(pvals) {
 out_res <- extract_results(p_to_keep, method, res)
 
 ## save it all! 
-out_dir <- "results/temp"
-out_file <- paste0(method, "_res_split", split, ".RData")
-save(out_res, file = file.path(out_dir, out_file))
+save(out_res, file = outfile)
 
 print("FIN!")
 
