@@ -11,7 +11,7 @@ SPLIT = list(range(1, 11))
 rule all:
     input:
         wd + "/data/aries_fom.RData", 
-        expand(wd + "/results/temp/", method, "_res_split", split, ".RData", method = METHODS, split = SPLIT)
+        expand(wd + "/results/temp/{method}_res_split{split}.RData", method = METHODS, split = SPLIT)
 
 rule clean_meth:
     input:
@@ -34,7 +34,7 @@ rule sims:
         meth = wd + "data/aries_fom.RData", 
         cc = ARIES_DATA_DIR + "/methylation/aries-v4/aries-blood-cell-counts.txt",
     output:
-        expand(wd + "/results/temp/", method, "_res_split", split, ".RData", method = METHODS, split = SPLIT)
+        expand(wd + "/results/temp/{method}_res_split{split}.RData", method = METHODS, split = SPLIT)
     shell:
         'echo $HOSTNAME; Rscript {input.script} "{output}"'
 
