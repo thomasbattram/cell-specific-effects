@@ -1,0 +1,48 @@
+#!/bin/python
+
+import os
+
+## Just the directory on bluepebble used for this analysis
+wd = os.getwd()
+ARIES_DATA_DIR=""
+METHODS = ["celldmc", "tca", "tcareg", "omicwas", "toast"]
+SPLIT = list(range(1, 11))
+rule all:
+    input:
+        expand()
+
+rule clean_meth:
+    input:
+        script = wd + "/scripts/clean-meth.R", 
+        meth = ARIES_DATA_DIR + "/methylation/aries-v4/aries-meth-v4.Robj", 
+        samplesheet = ARIES_DATA_DIR + "/methylation/aries-v4/aries-samplesheet.Robj", 
+        detp = ARIES_DATA_DIR + "/methylation/aries-v4/aries-detp-v4.Robj",
+    output:
+        wd + "data/aries_fom.RData",
+    shell:
+        'echo $HOSTNAME; Rscript {input.script} "{input.meth}" "{input.samplesheet}" "{input.cc}" "{input.detp}" "{output}"'
+
+
+# rule install_pkgs:
+#     input:
+
+rule sims:
+    input:
+        script = wd + "/scripts/test-methods.R", 
+        meth = wd + "data/aries_fom.RData", 
+        cc = ARIES_DATA_DIR + "/methylation/aries-v4/aries-blood-cell-counts.txt",
+    output:
+        expand(wd + "/results/temp/", method, "_res_split", split, ".RData", method = METHODS, split = SPLIT)
+    shell:
+        'echo $HOSTNAME; Rscript {input.script} "{output}"'
+
+rule sims_res:
+    input:
+        script = wd + "/scripts/test-methods-results.R", 
+        inputs = expand(wd + "/results/temp/", method, "_res_split", split, ".RData", method = METHODS, split = SPLIT)
+    output:
+        
+    shell:
+        'echo $HOSTNAME; Rscript {input.script} "{output}"'
+
+
