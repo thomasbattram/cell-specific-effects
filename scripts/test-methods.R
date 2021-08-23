@@ -26,6 +26,10 @@ meth_file <- args[1]
 cc_file <- args[2]
 outfile <- args[3]
 
+# meth_file <- "data/aries_fom.RData" 
+# cc_file <- "ARIES_DATA_DIR/aries-blood-cell-counts.txt" 
+# outfile <- "results/temp/celldmc_res_split87.RData"
+
 ## data
 methods <- c("celldmc", "tca", "tcareg", "omicwas", "toast")
 get_method <- function(outfile) str_extract(outfile, methods)[!is.na(str_extract(outfile, methods))]

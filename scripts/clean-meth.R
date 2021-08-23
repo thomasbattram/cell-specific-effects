@@ -97,5 +97,18 @@ dim(meth)
 
 print(paste0("Number of samples removed = ", length(rem_samp)))
 
+## impute matrix -- REQUIRED FOR CELL-SPECIFIC METHODS
+impute_matrix <- function(x, FUN = function(x) matrixStats::rowMedians(x, na.rm = T)) {
+    idx <- which(is.na(x), arr.ind = T)
+    if (length(idx) > 0) {
+        v <- FUN(x)
+        v[which(is.na(v))] <- FUN(matrix(v, nrow = 1))
+        x[idx] <- v[idx[, "row"]]
+    }
+    return(x)
+}
+
+meth <- impute_matrix(meth)
+
 save(meth, file = outfile)
 
