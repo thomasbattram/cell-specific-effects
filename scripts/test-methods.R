@@ -88,10 +88,6 @@ phenotypes_test <- phenotypes[1:50, ]
 cell_counts_test <- reest_cell_props(cell_counts_test)
 rownames(cell_counts_test) <- colnames(meth_test)
 
-if (method == "omicwas") {
-	meth_test <- meth_test[1:50, 1:50]	
-}
-
 # meth_test <- meth_test[1:50, 1:50]
 
 # ---------------------------------------------------------------
