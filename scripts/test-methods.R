@@ -32,7 +32,10 @@ outfile <- args[3]
 
 ## data
 methods <- c("celldmc", "tca", "tcareg", "omicwas", "toast")
-get_method <- function(outfile) str_extract(outfile, methods)[!is.na(str_extract(outfile, methods))]
+get_method <- function(outfile) {
+	gsub("results/temp/", "", outfile) %>%
+		gsub("_res_split.*", "", .)
+}
 method <- get_method(outfile)
 
 get_split <- function(outfile) as.numeric(str_extract(outfile, "[0-9]"))
