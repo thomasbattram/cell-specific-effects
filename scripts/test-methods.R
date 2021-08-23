@@ -28,12 +28,12 @@ outfile <- args[3]
 
 # meth_file <- "data/aries_fom.RData" 
 # cc_file <- "ARIES_DATA_DIR/aries-blood-cell-counts.txt" 
-# outfile <- "results/temp/celldmc_res_split87.RData"
+# outfile <- "/home/tb13101/projects/cell-specific-effects/results/temp/tcareg_res_split70.RData"
 
 ## data
 methods <- c("celldmc", "tca", "tcareg", "omicwas", "toast")
 get_method <- function(outfile) {
-	gsub("results/temp/", "", outfile) %>%
+	gsub(".*results/temp/", "", outfile) %>%
 		gsub("_res_split.*", "", .)
 }
 method <- get_method(outfile)
