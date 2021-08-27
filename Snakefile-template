@@ -42,7 +42,7 @@ rule sims:
 rule sims_res:
     input:
         script = wd + "/scripts/test-methods-results.R", 
-        inputs = expand(wd + "/results/temp/", method, "_res_split", split, ".RData", method = METHODS, split = SPLIT)
+        inputs = expand(wd + "/results/temp/{method}_res_split{split}.RData", method = METHODS, split = SPLIT)
     output:
         fp = wd + "/results/false-positives-plot.pdf", 
         lamb = wd + "/results/lambdas-plot.pdf", 
