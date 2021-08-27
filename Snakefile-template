@@ -11,7 +11,8 @@ SPLIT = list(range(1, 101))
 rule all:
     input:
         wd + "/data/aries_fom.RData", 
-        expand(wd + "/results/temp/{method}_res_split{split}.RData", method = METHODS, split = SPLIT)
+        expand(wd + "/results/temp/{method}_res_split{split}.RData", method = METHODS, split = SPLIT), 
+        wd + "/results/false-positives-plot.pdf"
 
 rule clean_meth:
     input:
