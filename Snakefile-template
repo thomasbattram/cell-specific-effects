@@ -38,13 +38,13 @@ rule sims:
     shell:
         'echo $HOSTNAME; Rscript {input.script} "{input.meth}" "{input.cc}" "{output}"'
 
-# rule sims_res:
-#     input:
-#         script = wd + "/scripts/test-methods-results.R", 
-#         inputs = expand(wd + "/results/temp/", method, "_res_split", split, ".RData", method = METHODS, split = SPLIT)
-#     output:
+rule sims_res:
+    input:
+        script = wd + "/scripts/test-methods-results.R", 
+        inputs = expand(wd + "/results/temp/", method, "_res_split", split, ".RData", method = METHODS, split = SPLIT)
+    output:
         
-#     shell:
-#         'echo $HOSTNAME; Rscript {input.script} "{output}"'
+    shell:
+        'echo $HOSTNAME; Rscript {input.script} "{output}"'
 
 
