@@ -43,8 +43,10 @@ rule sims_res:
         script = wd + "/scripts/test-methods-results.R", 
         inputs = expand(wd + "/results/temp/", method, "_res_split", split, ".RData", method = METHODS, split = SPLIT)
     output:
-        
+        fp = wd + "/results/false-positives-plot.pdf", 
+        lamb = wd + "/results/lambdas-plot.pdf", 
+        fp_lamb = wd + "/results/false-positives-and-lambdas-plot.pdf"
     shell:
-        'echo $HOSTNAME; Rscript {input.script} "{output}"'
+        'echo $HOSTNAME; Rscript {input.script} "{output.fp}" "{output.lamb}" "{output.fp_lamb}"'
 
 
