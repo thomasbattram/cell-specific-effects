@@ -3,3 +3,5 @@ scripts/submission-scripts/
 results/
 TCA.log
 HPSI human cerebral organoids 2021-07-16 05.23.tsv
+aries-ewas/data
+aries-ewas/results
