@@ -17,7 +17,7 @@ library(usefunc) # own package of useful functions
 
 ## data
 ec_meta <- read_tsv("data/ec-aries-metadata.tsv")
-IDs <- read_tsv("data/ARIES_sample_ids.txt")
+IDs <- read_tsv("data/ARIES_sample_ids.txt") # THIS WAS TAKEN FROM THE EWAS CATALOG RDSF SPACE
 
 alspac_data_dir <- "/Volumes/Data/"
 setDataDir(alspac_data_dir)
