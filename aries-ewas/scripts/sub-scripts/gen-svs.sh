@@ -20,18 +20,17 @@ pheno="${SCRATCH_WD}""/data/aries-fom-phenotype-data.tsv"
 meth="${SCRATCH_WD}""/../sims/data/aries_fom.RData"
 pcs="${SCRATCH_WD}""/data/FOM_pcs.eigenvec"
 
-echo temperature="${SLURM_ARRAY_TASK_ID}"
-
 
 ## Test time taken to run analyses (just run all in R)
 ## Add taking a trait for each array number! -- should be able to take from a text file of traits??
 	# Test with code below
-
-trait=`sed '1!d' ${SCRATCH_WD}/data/traits.txt`
+trait_n="${SLURM_ARRAY_TASK_ID}"
+# trait_n="1"
+trait=`sed "${trait_n}q;d" ${SCRATCH_WD}/data/traits.txt`
 echo $trait
 
 ## output files
-results="${SCRATCH_WD}""data/svs/${trait}.tsv"
+results="${SCRATCH_WD}""/data/svs/${trait}.tsv"
 removed="${SCRATCH_WD}""/data/svs/removed/${trait}.RData"
 
 ## Echo input and output files
@@ -45,4 +44,4 @@ echo $results
 echo $removed
 
 ## Run the script
-Rscript scripts/gen-svs.R "${meta_file}" "${pheno}" "${meth}" "${pcs}" "${results}" "${removed}"
+Rscript scripts/gen-svs.R "${pheno}" "${meth}" "${meta_file}" "${pcs}" "" "${results}" "${removed}"
