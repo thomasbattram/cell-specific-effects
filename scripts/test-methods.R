@@ -18,6 +18,7 @@ library(EpiDISH) # CellDMC
 library(TCA) # TCA
 library(omicwas) # omicwas
 library(TOAST) # TOAST
+library(aries) # getting aries cell counts
 library(usefunc) # own package of useful functions - devtools::install_github("thomasbattram/usefunc")
 
 ## args
@@ -26,8 +27,10 @@ meth_file <- args[1]
 cc_file <- args[2]
 outfile <- args[3]
 
+# setwd("SCRATCH_SPACE")
 # meth_file <- "data/aries_fom.RData" 
 # cc_file <- "ARIES_DATA_DIR/aries-blood-cell-counts.txt" 
+# aries_dir <- "/user/work/ms13525/aries"
 # outfile <- "/home/tb13101/projects/cell-specific-effects/results/temp/tcareg_res_split70.RData"
 
 ## data
@@ -44,6 +47,9 @@ split1 <- (split - 1) * 10 + 1
 split2 <- split * 10
 message("split = ", split1, " to ", split2)
 
+aries <- aries.select(aries_dir, time.point = "FOM")
+cell_counts <- aries$cell.counts[["blood-gse35069"]]
+
 # ---------------------------------------------------------------
 # Setup
 # ---------------------------------------------------------------
@@ -52,8 +58,9 @@ message("split = ", split1, " to ", split2)
 meth <- new_load(meth_file)
 
 ## Cell counts
-cell_counts <- read_tsv(cc_file) %>%
-	dplyr::filter(IID %in% colnames(meth))
+cell_counts <- cell_counts[rownames(cell_counts) %in% colnames(meth), ]
+# cell_counts <- read_tsv(cc_file) %>%
+# 	dplyr::filter(IID %in% colnames(meth))
 
 phenotypes <- map_dfc(1:1000, function(x) {set.seed(x); sample(c(0,1), ncol(meth), replace=T)})
 p_names <- paste0("p", 1:1000)
@@ -66,11 +73,9 @@ phenotypes <- phenotypes %>%
 	# left_join(cell_counts, by = c("Sample_Name" = "IID")) %>%
 	dplyr::select(Sample_Name, everything())
 
-stopifnot(all(cell_counts$IID == phenotypes$Sample_Name))
+stopifnot(all(rownames(cell_counts) == phenotypes$Sample_Name))
 
-cell_counts2 <- as.matrix(dplyr::select(cell_counts, -IID))
-rownames(cell_counts2) <- cell_counts$IID
-cell_counts2[sign(cell_counts2) == -1] <- 0
+cell_counts[sign(cell_counts) == -1] <- 0
 
 ## Need to re-estimate cell props so they all add up to 1 for TCA to work...
 reest_cell_props <- function(cc_mat)
@@ -81,7 +86,7 @@ reest_cell_props <- function(cc_mat)
 	return(as.matrix(out_mat))
 }
 
-cell_counts_test <- cell_counts2[1:50, ]
+cell_counts_test <- cell_counts[1:50, ]
 meth_test <- meth[,1:50]
 phenotypes_test <- phenotypes[1:50, ]
 
