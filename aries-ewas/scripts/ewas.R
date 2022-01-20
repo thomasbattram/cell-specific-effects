@@ -35,8 +35,12 @@ out_files <- args[7]
 # aries_dir <- ""
 # out_files <- "results/ewas-res/celldmc/s1026.RData results/ewas-res/tca/s1026.RData results/ewas-res/tcareg/s1026.RData results/ewas-res/toast/s1026.RData results/ewas-res/omicwas/s1026.RData"
 # ## out_files <- "results/ewas-res/celldmc/fm1ms100.RData results/ewas-res/tca/fm1ms100.RData results/ewas-res/tcareg/fm1ms100.RData results/ewas-res/toast/fm1ms100.RData results/ewas-res/omicwas/fm1ms100.RData"
-# out_files <- unlist(str_split(out_files, " "))
 
+out_files <- unlist(str_split(out_files, " "))
+if (length(out_files) != 5) {
+    message(out_files)
+    stop("Length of out_files is not 5!")
+}
 
 ## Get trait name from outfile
 get_trait <- function(out_file)
