@@ -23,13 +23,14 @@ aries_dir <- args[5]
 out_file <- args[6]
 removed_out_file <- args[7]
 
+# setwd("SCRATCH_SPACE")
 # phen_file <- "data/aries-fom-phenotype-data.tsv"
 # meth_file <- "../sims/data/aries_fom.RData"
 # meta_file <- "data/metadata.tsv"
 # pcs_file <- "data/FOM_pcs.eigenvec"
 # aries_dir <- ""
-# out_file <- "data/svs/fm1ms100.tsv"
-# removed_out_file <- "data/svs/removed/fm1ms100.RData"
+# out_file <- "data/svs/s1026.tsv"
+# removed_out_file <- "data/svs/removed/s1026.RData"
 
 ## Get trait name from outfile
 get_trait <- function(out_file)

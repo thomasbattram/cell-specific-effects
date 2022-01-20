@@ -193,6 +193,10 @@ missing_dat <- map_df(seq_along(clean_res), function(x) {
 })
 sum(missing_dat$na_count > nrow(clean_res)/2) # 0 phenotypes have over 50% missing data
 
+## Remove duplicates
+clean_res <- clean_res %>%
+	dplyr::filter(!duplicated(aln))
+
 # ------------------------------------------------------------------------------------
 # Finishing tidying data + saving it all
 # ------------------------------------------------------------------------------------

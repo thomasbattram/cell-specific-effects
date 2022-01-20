@@ -6,7 +6,7 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --time=1:00:00
 #SBATCH --mem=16GB
-#SBATCH --array=1-100
+#SBATCH --array=1-389
 
 ## Scratch space
 SCRATCH_WD="/user/work/tb13101/cell-specific-effects/aries-ewas"
