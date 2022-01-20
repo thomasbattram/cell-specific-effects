@@ -14,7 +14,7 @@ WD="/user/home/tb13101/projects/cell-specific-effects/aries-ewas"
 cd ${WD}
 
 trait_n="${SLURM_ARRAY_TASK_ID}"
-# trait_n="1"
+# trait_n="2"
 trait=`sed "${trait_n}q;d" ${SCRATCH_WD}/data/traits.txt`
 echo $trait
 
@@ -29,7 +29,9 @@ aries_dir=""
 
 ## output files
 RES_DIR="${SCRATCH_WD}""/results/ewas-res/"
-results="${RES_DIR}""/celldmc/${trait}.RData "${RES_DIR}"/tca/${trait}.RData "${RES_DIR}"/tcareg/${trait}.RData "${RES_DIR}"/toast/${trait}.RData "${RES_DIR}"/omicwas/${trait}.RData"
+results=""${RES_DIR}"omicwas/${trait}.RData "${RES_DIR}"toast/${trait}.RData "${RES_DIR}"tcareg/${trait}.RData "${RES_DIR}"tca/${trait}.RData ${RES_DIR}""celldmc/${trait}.RData"
+# got to put methods at end if want to use them first apparently...
+
 
 ## Echo input and output files
 echo "Here are the input files:"
