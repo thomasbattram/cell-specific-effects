@@ -24,6 +24,7 @@ svs_file <- args[4]
 pcs_file <- args[5]
 aries_dir <- args[6]
 out_files <- args[7]
+failed_outfile <- args[8]
 
 # setwd("SCRATCH_SPACE")
 # phen_file <- "data/aries-fom-phenotype-data.tsv"
@@ -35,6 +36,7 @@ out_files <- args[7]
 # aries_dir <- ""
 # out_files <- "results/ewas-res/celldmc/s1026.RData results/ewas-res/tca/s1026.RData results/ewas-res/tcareg/s1026.RData results/ewas-res/toast/s1026.RData results/ewas-res/omicwas/s1026.RData"
 # ## out_files <- "results/ewas-res/celldmc/fm1ms100.RData results/ewas-res/tca/fm1ms100.RData results/ewas-res/tcareg/fm1ms100.RData results/ewas-res/toast/fm1ms100.RData results/ewas-res/omicwas/fm1ms100.RData"
+# failed_outfile <- "results/ewas-res/failed-ewas.tsv"
 
 out_files <- unlist(str_split(out_files, " "))
 if (length(out_files) != 5) {
@@ -261,9 +263,9 @@ run_ewas <- function(phen, p_dat, cc, meth_dat, IID, method, covs)
 
     if (!all(temp_phen[[IID]] == colnames(temp_meth))) stop("phenotype and DNAm data not matched.")
     ## FOR TESTS
-    # temp_meth <- temp_meth[1:1000, 1:250]
-    # temp_phen <- temp_phen[1:250, ]
-    # cc <- cell_counts[1:250, ]
+    # temp_meth <- temp_meth[1:50, 1:50]
+    # temp_phen <- temp_phen[1:50, ]
+    # cc <- cell_counts[1:50, ]
 
     # Get N cases and N controls per probe or just N for continuous variables
     if (is.binary(temp_phen[[phen]])) {
@@ -285,7 +287,12 @@ run_ewas <- function(phen, p_dat, cc, meth_dat, IID, method, covs)
     # p_to_keep <- p_to_keep[1]
     start_time <- proc.time()
     message("FUNCTION TIME")
-    res <- ewas_func(temp_phen, temp_meth, phen, cc, covs, IID)
+    res <- tryCatch({
+        ewas_func(temp_phen, temp_meth, phen, cc, covs, IID)
+    }, error = function(e) {
+        usr_m <- paste0("Error in EWAS of ", phen, " using ", method, ".")
+        err_msg(e, r_msg = TRUE, user_msg = usr_m, to_return = phen)        
+    })
     time_taken <- proc.time() - start_time
     print(time_taken) # 68 mins (4105.556 seconds) for CellDMC
 
@@ -318,6 +325,15 @@ lapply(out_files, function(out_file) {
                          IID = "Sample_Name", 
                          method = method, 
                          covs = covs)
+    if (is.character(ewas_res)) {
+        if (ewas_res == trait) {
+            failed_out <- data.frame(phenotype = trait, ewas_method = method)
+            write.table(failed_out, file = failed_outfile, 
+                        sep = "\t", col.names = F, row.names = F, quote = F, append = T)
+            message("Writing out failed EWAS to ", failed_outfile)
+            return(NULL)
+        }
+    }
     message("Finished analyses using ", method)
     sort_function_name <- paste0("sort_", method)
     sort_func <- match.fun(sort_function_name)

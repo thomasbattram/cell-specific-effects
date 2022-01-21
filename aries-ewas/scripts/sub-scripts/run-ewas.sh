@@ -5,7 +5,7 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=1
 #SBATCH --time=24:00:00
-#SBATCH --mem=16GB
+#SBATCH --mem=32GB
 #SBATCH --array=1-100
 
 ## Scratch space
@@ -14,7 +14,7 @@ WD="/user/home/tb13101/projects/cell-specific-effects/aries-ewas"
 cd ${WD}
 
 trait_n="${SLURM_ARRAY_TASK_ID}"
-# trait_n="2"
+# trait_n="1"
 trait=`sed "${trait_n}q;d" ${SCRATCH_WD}/data/traits.txt`
 echo $trait
 
@@ -29,9 +29,8 @@ aries_dir=""
 
 ## output files
 RES_DIR="${SCRATCH_WD}""/results/ewas-res/"
-results=""${RES_DIR}"omicwas/${trait}.RData "${RES_DIR}"toast/${trait}.RData "${RES_DIR}"tcareg/${trait}.RData "${RES_DIR}"tca/${trait}.RData ${RES_DIR}""celldmc/${trait}.RData"
-# got to put methods at end if want to use them first apparently...
-
+results="${RES_DIR}""celldmc/${trait}.RData "${RES_DIR}"tca/${trait}.RData "${RES_DIR}"tcareg/${trait}.RData "${RES_DIR}"toast/${trait}.RData "${RES_DIR}"omicwas/${trait}.RData"
+failed="${RES_DIR}""failed-ewas.tsv"
 
 ## Echo input and output files
 echo "Here are the input files:"
@@ -43,6 +42,7 @@ echo $pcs
 echo $aries_dir
 echo "Here are the output files:"
 echo $results
+echo $failed
 
 ## Run the script
-time Rscript scripts/ewas.R "${pheno}" "${meth}" "${meta_file}" "${svs}" "${pcs}" "${aries_dir}" "${results}"
+time Rscript scripts/ewas.R "${pheno}" "${meth}" "${meta_file}" "${svs}" "${pcs}" "${aries_dir}" "${results}" "${failed}"
