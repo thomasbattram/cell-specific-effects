@@ -3,10 +3,14 @@
 #SBATCH --job-name=run-ewas
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=1
+#SBATCH --cpus-per-task=4
 #SBATCH --time=24:00:00
-#SBATCH --mem=32GB
-#SBATCH --array=1-100
+#SBATCH --mem=64GB
+#SBATCH --array=1-2
+#SBATCH --mail-type=begin
+#SBATCH --mail-type=end
+#SBATCH --mail-type=fail
+#SBATCH --mail-user=thomas.battram@bristol.ac.uk
 
 ## Scratch space
 SCRATCH_WD="/user/work/tb13101/cell-specific-effects/aries-ewas"
@@ -15,7 +19,8 @@ cd ${WD}
 
 trait_n="${SLURM_ARRAY_TASK_ID}"
 # trait_n="1"
-trait=`sed "${trait_n}q;d" ${SCRATCH_WD}/data/traits.txt`
+# trait=`sed "${trait_n}q;d" ${SCRATCH_WD}/data/traits.txt`
+trait=`sed "${trait_n}q;d" ${SCRATCH_WD}/data/test-traits.txt`
 echo $trait
 
 ## input files for analyses

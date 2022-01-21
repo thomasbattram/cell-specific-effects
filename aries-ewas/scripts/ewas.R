@@ -340,6 +340,7 @@ lapply(out_files, function(out_file) {
     out_res <- sort_func(ewas_res)
     message("Saving sorted results to ", out_file)
     save(out_res, file = out_file)
+    rm(list = c("out_res", "ewas_res"))
 })
 
 # run_ewas(phen = trait, 
