@@ -10,7 +10,7 @@
 #SBATCH --mail-type=begin
 #SBATCH --mail-type=end
 #SBATCH --mail-type=fail
-#SBATCH --mail-user=thomas.battram@bristol.ac.uk
+#SBATCH --mail-user=thomas.battram@hotmail.co.uk
 
 ## Scratch space
 SCRATCH_WD="/user/work/tb13101/cell-specific-effects/aries-ewas"
@@ -34,7 +34,8 @@ aries_dir=""
 
 ## output files
 RES_DIR="${SCRATCH_WD}""/results/ewas-res/"
-results="${RES_DIR}""celldmc/${trait}.RData "${RES_DIR}"tca/${trait}.RData "${RES_DIR}"tcareg/${trait}.RData "${RES_DIR}"toast/${trait}.RData "${RES_DIR}"omicwas/${trait}.RData"
+# results="${RES_DIR}""celldmc/${trait}.RData "${RES_DIR}"tca/${trait}.RData "${RES_DIR}"tcareg/${trait}.RData "${RES_DIR}"toast/${trait}.RData "${RES_DIR}"omicwas/${trait}.RData"
+results=""${RES_DIR}"toast/${trait}.RData "${RES_DIR}"omicwas/${trait}.RData"
 failed="${RES_DIR}""failed-ewas.tsv"
 
 ## Echo input and output files

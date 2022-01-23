@@ -39,10 +39,10 @@ failed_outfile <- args[8]
 # failed_outfile <- "results/ewas-res/failed-ewas.tsv"
 
 out_files <- unlist(str_split(out_files, " "))
-if (length(out_files) != 5) {
-    message(out_files)
-    stop("Length of out_files is not 5!")
-}
+# if (length(out_files) != 5) {
+#     message(out_files)
+#     stop("Length of out_files is not 5!")
+# }
 
 ## Get trait name from outfile
 get_trait <- function(out_file)
