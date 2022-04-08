@@ -51,7 +51,14 @@ rule gen_svs:
 #     shell:
 #         "echo $HOSTNAME; Rscript {input.script} '{input.pheno}' '{input.meta}' '{input.aries_dir}' '{output}'"
 
-        
+def ewas_out(path, methods, trait):
+    outlist = []
+    for meth in methods:
+        outlist.append(path + "/" + meth + "_res_split_" + trait + ".RData")
+    return outlist
+      
+ewas_out(SCRATCH_WD + "/results/ewas-res", METHODS, "Alb_FOM1")
+
 rule run_ewas:
     input:
         script = wd + "/scripts/ewas.R",
@@ -62,7 +69,8 @@ rule run_ewas:
         pcs = SCRATCH_WD + "/data/FOM_pcs.eigenvec",
         aries_dir = ARIES_DATA_DIR,         
     output:
-        out = SCRATCH_WD + "/results/ewas-res/{method}_res_split_{trait}.tsv"
+        lambda wildcards: \
+            out = ewas_out(SCRATCH_WD + "/results/ewas-res", METHODS, wildcards.trait)
     params:
         failed_out = SCRATCH_WD + "results/ewas-res/failed-ewas.tsv"
     shell:
