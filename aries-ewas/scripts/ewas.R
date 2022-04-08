@@ -30,12 +30,13 @@ failed_outfile <- args[8]
 # phen_file <- "data/aries-fom-phenotype-data.tsv"
 # meth_file <- "../sims/data/aries_fom.RData"
 # meta_file <- "data/metadata.tsv"
-# svs_file <- "data/svs/s1026.tsv"
+# svs_file <- "data/svs/r6010.tsv"
 # ## svs_file <- "data/svs/fm1ms100.tsv"
 # pcs_file <- "data/FOM_pcs.eigenvec"
-# aries_dir <- ""
-# out_files <- "results/ewas-res/celldmc/s1026.RData results/ewas-res/tca/s1026.RData results/ewas-res/tcareg/s1026.RData results/ewas-res/toast/s1026.RData results/ewas-res/omicwas/s1026.RData"
+# aries_dir <- "/user/work/ms13525/aries"
+# out_files <- "results/ewas-res/celldmc/r6010.RData results/ewas-res/tca/r6010.RData results/ewas-res/tcareg/r6010.RData results/ewas-res/toast/r6010.RData results/ewas-res/omicwas/r6010.RData"
 # ## out_files <- "results/ewas-res/celldmc/fm1ms100.RData results/ewas-res/tca/fm1ms100.RData results/ewas-res/tcareg/fm1ms100.RData results/ewas-res/toast/fm1ms100.RData results/ewas-res/omicwas/fm1ms100.RData"
+# ## out_files <- "results/ewas-res/r6010.tsv"
 # failed_outfile <- "results/ewas-res/failed-ewas.tsv"
 
 out_files <- unlist(str_split(out_files, " "))
@@ -189,40 +190,40 @@ sort_tcareg <- function(tcareg_res)
     return(tcareg_out)
 }
 
-run_omicwas <- function(temp_phen, temp_meth, phen, cc, covs, IID, seed = 2)
-{
-    set.seed(seed)
-    Y <- temp_meth[sample(1:nrow(temp_meth), 1000), ]
-    # Y <- temp_meth
-    phen_vals <- temp_phen[[phen]]
-    if (is.binary(phen_vals)) phen_vals <- ifelse(phen_vals == "yes", 1, 0)
-    omicwas_phen <- matrix(phen_vals)
-    colnames(omicwas_phen) <- phen
-    rownames(omicwas_phen) <- temp_phen[[IID]]
-    omicwas_covs <- as.matrix(temp_phen[, !colnames(temp_phen) %in% c(phen, IID, "aln")])
-    rownames(omicwas_covs) <- temp_phen[[IID]]
-    res <- ctassoc(X = omicwas_phen, W = cc, Y = Y, C = omicwas_covs, 
-                   test = "nls.logit", regularize = TRUE)
-    ## Matrix (or vector) of covariates; samples x covariates. X, W, Y, C should benumeric.
-    out <- res$coefficients %>% dplyr::filter(term == phen)
-    return(out) 
-}
+# run_omicwas <- function(temp_phen, temp_meth, phen, cc, covs, IID, seed = 2)
+# {
+#     set.seed(seed)
+#     Y <- temp_meth[sample(1:nrow(temp_meth), 1000), ]
+#     # Y <- temp_meth
+#     phen_vals <- temp_phen[[phen]]
+#     if (is.binary(phen_vals)) phen_vals <- ifelse(phen_vals == "yes", 1, 0)
+#     omicwas_phen <- matrix(phen_vals)
+#     colnames(omicwas_phen) <- phen
+#     rownames(omicwas_phen) <- temp_phen[[IID]]
+#     omicwas_covs <- as.matrix(temp_phen[, !colnames(temp_phen) %in% c(phen, IID, "aln")])
+#     rownames(omicwas_covs) <- temp_phen[[IID]]
+#     res <- ctassoc(X = omicwas_phen, W = cc, Y = Y, C = omicwas_covs, 
+#                    test = "nls.logit", regularize = TRUE)
+#     ## Matrix (or vector) of covariates; samples x covariates. X, W, Y, C should benumeric.
+#     out <- res$coefficients %>% dplyr::filter(term == phen)
+#     return(out) 
+# }
 
-sort_omicwas <- function(omicwas_res)
-{
-    cols_to_get <- c("estimate", "p.value")
-    omicwas_out <- lapply(cols_to_get, function(x) {
-        out <- omicwas_res %>%
-            dplyr::select(response, celltype, one_of(x)) %>%
-            pivot_wider(names_from = celltype, values_from = one_of(x)) %>%
-            as.data.frame
-        rownames(out) <- out$response
-        out <- out[, !colnames(out) == "response"]
-        return(out)
-    })
-    names(omicwas_out) <- c("beta", "p")
-    return(omicwas_out)
-}
+# sort_omicwas <- function(omicwas_res)
+# {
+#     cols_to_get <- c("estimate", "p.value")
+#     omicwas_out <- lapply(cols_to_get, function(x) {
+#         out <- omicwas_res %>%
+#             dplyr::select(response, celltype, one_of(x)) %>%
+#             pivot_wider(names_from = celltype, values_from = one_of(x)) %>%
+#             as.data.frame
+#         rownames(out) <- out$response
+#         out <- out[, !colnames(out) == "response"]
+#         return(out)
+#     })
+#     names(omicwas_out) <- c("beta", "p")
+#     return(omicwas_out)
+# }
 
 run_toast <- function(temp_phen, temp_meth, phen, cc, covs, IID)
 {
@@ -281,30 +282,31 @@ run_ewas <- function(phen, p_dat, cc, meth_dat, IID, method, covs)
             mutate(N = as.numeric(N))
     }
     
-    # model <- as.formula(paste0("methylation ~ ", paste(c(addq(phen), covs), collapse = " + ")))
-    function_name <- paste0("run_", method)
-    ewas_func <- match.fun(function_name)
-    # p_to_keep <- p_to_keep[1]
-    start_time <- proc.time()
-    message("FUNCTION TIME")
-    res <- tryCatch({
-        ewas_func(temp_phen, temp_meth, phen, cc, covs, IID)
-    }, error = function(e) {
-        usr_m <- paste0("Error in EWAS of ", phen, " using ", method, ".")
-        err_msg(e, r_msg = TRUE, user_msg = usr_m, to_return = phen)        
-    })
-    time_taken <- proc.time() - start_time
-    print(time_taken) # 68 mins (4105.556 seconds) for CellDMC
-
-    return(res)
-    # obj <- tryCatch({
-    #     ewaff.sites(model, variable.of.interest = phen,
-    #                        methylation = temp_meth, data = temp_phen, method = "glm",
-    #                        generate.confounders = NULL, family = "gaussian")
+    # function_name <- paste0("run_", method)
+    # ewas_func <- match.fun(function_name)
+    # # p_to_keep <- p_to_keep[1]
+    # start_time <- proc.time()
+    # message("FUNCTION TIME")
+    # res <- tryCatch({
+    #     ewas_func(temp_phen, temp_meth, phen, cc, covs, IID)
     # }, error = function(e) {
-    #     usr_m <- paste0("Error in EWAS of ", phen)
-    #     err_msg(e, r_msg = TRUE, user_msg = usr_m, to_return = phen)
+    #     usr_m <- paste0("Error in EWAS of ", phen, " using ", method, ".")
+    #     err_msg(e, r_msg = TRUE, user_msg = usr_m, to_return = phen)        
     # })
+    # time_taken <- proc.time() - start_time
+    # print(time_taken) # 68 mins (4105.556 seconds) for CellDMC
+
+
+    model <- as.formula(paste0("methylation ~ ", paste(c(phen, covs), collapse = " + ")))
+    obj <- tryCatch({
+        ewaff.sites(model, variable.of.interest = phen,
+                           methylation = temp_meth, data = temp_phen, method = "glm",
+                           generate.confounders = NULL, family = "gaussian")
+    }, error = function(e) {
+        usr_m <- paste0("Error in EWAS of ", phen)
+        err_msg(e, r_msg = TRUE, user_msg = usr_m, to_return = phen)
+    })
+    return(obj)
 }
 
 # ----------------------------------------
@@ -343,12 +345,20 @@ lapply(out_files, function(out_file) {
     rm(list = c("out_res", "ewas_res"))
 })
 
-# run_ewas(phen = trait, 
-# 		 p_dat = phen_dat, 
-# 		 cell_counts = cell_counts, 
-# 		 meth_dat = meth,
-# 		 IID = "Sample_Name", 
-# 		 out_file = out_files, 
-# 		 covs = covs)
+# obj <- run_ewas(phen = trait, 
+#                      p_dat = phen_dat, 
+#                      cc = cell_counts, 
+#                      meth_dat = meth,
+#                      IID = "Sample_Name", 
+#                      method = NA, 
+#                      covs = covs)
+
+# res <- obj$table %>%
+#     rownames_to_column(var = "probeID") %>%
+#     dplyr::select(probeID, estimate, se, p.value) %>%
+#     mutate(Details = NA)
+
+# write.table(res, file = out_files, sep = "\t", col.names = T, row.names = F, quote = F)
+
 
 print("FIN")

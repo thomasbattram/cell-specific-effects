@@ -36,6 +36,7 @@ aries_dir=""
 RES_DIR="${SCRATCH_WD}""/results/ewas-res/"
 # results="${RES_DIR}""celldmc/${trait}.RData "${RES_DIR}"tca/${trait}.RData "${RES_DIR}"tcareg/${trait}.RData "${RES_DIR}"toast/${trait}.RData "${RES_DIR}"omicwas/${trait}.RData"
 results=""${RES_DIR}"toast/${trait}.RData "${RES_DIR}"omicwas/${trait}.RData"
+results="${RES_DIR}""tcareg/${trait}.RData"
 failed="${RES_DIR}""failed-ewas.tsv"
 
 ## Echo input and output files
