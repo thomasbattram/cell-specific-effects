@@ -1,53 +1,83 @@
 #!/bin/python
 
 import os
+import pandas as pd
 
 ## Just the directory on bluepebble used for this analysis
 wd = os.getcwd()
-ARIES_DATA_DIR=""
-METHODS = ["celldmc", "tca", "tcareg", "omicwas", "toast"]
-SPLIT = list(range(1, 101))
+ARIES_DATA_DIR = ""
+SCRATCH_WD = "/user/work/tb13101/cell-specific-effects/aries-ewas"
+METHODS = ["celldmc", "tca", "tcareg", "toast"]
+
+## Extract traits from meta-data
+meta_file = SCRATCH_WD + "/data/metadata.tsv"
+x = pd.read_csv(meta_file, sep = "\t")
+TRAITS = x["alspac_name"].tolist()
 
 rule all:
     input:
-        wd + "/data/aries_fom.RData", 
-        expand(wd + "/results/temp/{method}_res_split{split}.RData", method = METHODS, split = SPLIT), 
-        wd + "/results/false-positives-plot.pdf"
+        expand(SCRATCH_WD + "/data/svs/{trait}.tsv", trait = TRAITS),
+        expand(SCRATCH_WD + "/results/ewas-res/{method}_res_split_{trait}.tsv", method = METHODS, trait = TRAITS), 
 
-rule clean_meth:
+rule gen_svs:
     input:
-        script = wd + "/scripts/clean-meth.R", 
-        meth = ARIES_DATA_DIR + "/methylation/aries-v4/aries-meth-v4.Robj", 
-        samplesheet = ARIES_DATA_DIR + "/methylation/aries-v4/aries-samplesheet.Robj", 
-        detp = ARIES_DATA_DIR + "/methylation/aries-v4/aries-detp-v4.Robj",
+        script = wd + "/scripts/gen-svs.R",
+        pheno = SCRATCH_WD + "/data/aries-fom-phenotype-data.tsv",
+        meta = meta_file,
+        meth = SCRATCH_WD + "/../sims/data/aries_fom.RData", 
+        pcs = SCRATCH_WD + "/data/FOM_pcs.eigenvec",
+        aries_dir = ARIES_DATA_DIR
     output:
-        wd + "/data/aries_fom.RData",
+        results = SCRATCH_WD + "/data/svs/{trait}.tsv", 
+        removed = SCRATCH_WD + "/data/svs/removed/{trait}.RData"
     shell:
-        'echo $HOSTNAME; Rscript {input.script} "{input.meth}" "{input.samplesheet}" "{input.detp}" "{output}"'
+        """echo $HOSTNAME; Rscript {input.script} \
+                                        '{input.pheno}' \
+                                        '{input.meth}' \
+                                        '{input.meta}' \
+                                        '{input.pcs}' \
+                                        '{input.aries_dir}' \
+                                        '{output.results}' \
+                                        '{output.removed}' """
 
-
-# rule install_pkgs:
+# rule combine_covariates:
 #     input:
+#         script = wd + "/scripts/combine-covariates.R",
+#         pheno = SCRATCH_WD + "/data/aries-fom-phenotype-data.tsv",
+#         meta = meta_file,
+#         aries_dir = ARIES_DATA_DIR
+#     output:
+#         SCRATCH_WD + "data/covars.tsv", 
+#     shell:
+#         "echo $HOSTNAME; Rscript {input.script} '{input.pheno}' '{input.meta}' '{input.aries_dir}' '{output}'"
 
-rule sims:
+        
+rule run_ewas:
     input:
-        script = wd + "/scripts/test-methods.R", 
-        meth = wd + "/data/aries_fom.RData", 
-        cc = ARIES_DATA_DIR + "/methylation/aries-v4/aries-blood-cell-counts.txt",
+        script = wd + "/scripts/ewas.R",
+        pheno = SCRATCH_WD + "/data/aries-fom-phenotype-data.tsv",
+        meth = SCRATCH_WD + "/../sims/data/aries_fom.RData", 
+        meta = meta_file,
+        svs = SCRATCH_WD + "/data/svs/{trait}.tsv", 
+        pcs = SCRATCH_WD + "/data/FOM_pcs.eigenvec",
+        aries_dir = ARIES_DATA_DIR,         
     output:
-        wd + "/results/temp/{method}_res_split{split}.RData"
+        out = expand(SCRATCH_WD + "/results/ewas-res/{method}_res_split_{trait}.tsv", method = METHODS),
+        failed_out = SCRATCH_WD + "results/ewas-res/failed-ewas.tsv"
     shell:
-        'echo $HOSTNAME; Rscript {input.script} "{input.meth}" "{input.cc}" "{output}"'
-
-rule sims_res:
-    input:
-        script = wd + "/scripts/test-methods-results.R", 
-        inputs = expand(wd + "/results/temp/{method}_res_split{split}.RData", method = METHODS, split = SPLIT)
-    output:
-        fp = wd + "/results/false-positives-plot.pdf", 
-        lamb = wd + "/results/lambdas-plot.pdf", 
-        fp_lamb = wd + "/results/false-positives-and-lambdas-plot.pdf"
-    shell:
-        'echo $HOSTNAME; Rscript {input.script} "{output.fp}" "{output.lamb}" "{output.fp_lamb}"'
+        """echo $HOSTNAME; Rscript {input.script} \
+                                        '{input.pheno}' \
+                                        '{input.meth}' \
+                                        '{input.meta}' \
+                                        '{input.svs}' \
+                                        '{input.pcs}' \
+                                        '{input.aries_dir}' \
+                                        '{output.out}' \
+                                        '{output.failed_out}' """
 
 
+## Compare to just normal EWAS
+# rule compare_res
+
+# rule report:
+    
