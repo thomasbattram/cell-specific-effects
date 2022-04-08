@@ -62,7 +62,7 @@ rule run_ewas:
         pcs = SCRATCH_WD + "/data/FOM_pcs.eigenvec",
         aries_dir = ARIES_DATA_DIR,         
     output:
-        out = expand(SCRATCH_WD + "/results/ewas-res/{method}_res_split_{trait}.tsv", method = METHODS),
+        out = expand(SCRATCH_WD + "/results/ewas-res/{method}_res_split_{trait}.tsv", method = METHODS, trait = TRAITS),
         failed_out = SCRATCH_WD + "results/ewas-res/failed-ewas.tsv"
     shell:
         """echo $HOSTNAME; Rscript {input.script} \
