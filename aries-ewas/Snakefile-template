@@ -17,7 +17,7 @@ TRAITS = x["alspac_name"].tolist()
 rule all:
     input:
         expand(SCRATCH_WD + "/data/svs/{trait}.tsv", trait = TRAITS),
-        expand(SCRATCH_WD + "/results/ewas-res/{method}_res_split_{trait}.tsv", method = METHODS, trait = TRAITS), 
+        expand(SCRATCH_WD + "/results/ewas-res/{method}/{trait}.RData", method = METHODS, trait = TRAITS) 
 
 rule gen_svs:
     input:
@@ -69,8 +69,7 @@ rule run_ewas:
         pcs = SCRATCH_WD + "/data/FOM_pcs.eigenvec",
         aries_dir = ARIES_DATA_DIR,         
     output:
-        lambda wildcards: \
-            out = ewas_out(SCRATCH_WD + "/results/ewas-res", METHODS, wildcards.trait)
+        out = expand(SCRATCH_WD + "/results/ewas-res/{method}/{{trait}}.RData", method = METHODS)
     params:
         failed_out = SCRATCH_WD + "results/ewas-res/failed-ewas.tsv"
     shell:
@@ -83,7 +82,6 @@ rule run_ewas:
                                         '{input.aries_dir}' \
                                         '{output.out}' \
                                         '{params.failed_out}' """
-
 
 ## Compare to just normal EWAS
 # rule compare_res
