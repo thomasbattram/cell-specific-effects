@@ -31,11 +31,11 @@ failed_outfile <- args[8]
 # meth_file <- "../sims/data/aries_fom.RData"
 # meta_file <- "data/metadata.tsv"
 # svs_file <- "data/svs/r6010.tsv"
-# ## svs_file <- "data/svs/fm1ms100.tsv"
+# ## svs_file <- "data/svs/LDLD_FOM1.tsv"
 # pcs_file <- "data/FOM_pcs.eigenvec"
 # aries_dir <- "/user/work/ms13525/aries"
 # out_files <- "results/ewas-res/celldmc/r6010.RData results/ewas-res/tca/r6010.RData results/ewas-res/tcareg/r6010.RData results/ewas-res/toast/r6010.RData results/ewas-res/omicwas/r6010.RData"
-# ## out_files <- "results/ewas-res/celldmc/fm1ms100.RData results/ewas-res/tca/fm1ms100.RData results/ewas-res/tcareg/fm1ms100.RData results/ewas-res/toast/fm1ms100.RData results/ewas-res/omicwas/fm1ms100.RData"
+# ## out_files <- "results/ewas-res/celldmc/LDLD_FOM1.RData results/ewas-res/tca/LDLD_FOM1.RData results/ewas-res/tcareg/LDLD_FOM1.RData results/ewas-res/toast/LDLD_FOM1.RData results/ewas-res/ewaff/LDLD_FOM1.RData"
 # ## out_files <- "results/ewas-res/r6010.tsv"
 # failed_outfile <- "results/ewas-res/failed-ewas.tsv"
 
@@ -255,58 +255,50 @@ sort_toast <- function(toast_res)
     return(toast_out)
 }
 
+run_ewaff <- function(temp_phen, temp_meth, phen, covs, IID)
+{
+    model <- as.formula(paste0("methylation ~ ", paste(c(phen, covs), collapse = " + ")))
+    out <- ewaff.sites(model, variable.of.interest = phen,
+                              methylation = temp_meth, data = temp_phen, method = "glm",
+                              generate.confounders = NULL, family = "gaussian")    
+    return(out)
+}
+
+sort_ewaff <- function(ewaff_res)
+{
+    list(beta = ewaff_res$table$estimate, 
+         se = ewaff_res$table$se, 
+         p = ewaff_res$table$p)
+}
+
 run_ewas <- function(phen, p_dat, cc, meth_dat, IID, method, covs) 
 {
     # Match meth to Pheno
     temp_meth <- meth_dat[, colnames(meth_dat) %in% p_dat[[IID]]]
     temp_meth <- meth_dat[, na.omit(match(p_dat[[IID]], colnames(meth_dat)))]
     temp_phen <- p_dat[match(colnames(temp_meth), p_dat[[IID]]), ]
-
+    temp_cc <- cc[rownames(cc) %in% temp_phen$Sample_Name, ]
+    
     if (!all(temp_phen[[IID]] == colnames(temp_meth))) stop("phenotype and DNAm data not matched.")
     ## FOR TESTS
     # temp_meth <- temp_meth[1:50, 1:50]
     # temp_phen <- temp_phen[1:50, ]
-    # cc <- cell_counts[1:50, ]
+    # temp_cc <- temp_cc[1:50, ]
 
-    # Get N cases and N controls per probe or just N for continuous variables
-    if (is.binary(temp_phen[[phen]])) {
-        cases <- temp_phen[temp_phen[[phen]] == "yes", IID, drop = TRUE]
-        n_cases <- rowSums(!is.na(temp_meth[, cases]))
-        n_controls <- rowSums(!is.na(temp_meth[, !colnames(temp_meth) %in% cases]))
-        probe_n <- as_tibble(cbind(probeID = names(n_cases), N_cases = n_cases, N_controls = n_controls)) %>%
-            mutate(N_cases = as.numeric(N_cases), N_controls = as.numeric(N_controls), 
-                   N = N_cases + N_controls)
-    } else {
-        n <- rowSums(!is.na(temp_meth))
-        probe_n <- as_tibble(cbind(probeID = names(n), N = n)) %>%
-            mutate(N = as.numeric(N))
-    }
-    
-    # function_name <- paste0("run_", method)
-    # ewas_func <- match.fun(function_name)
-    # # p_to_keep <- p_to_keep[1]
-    # start_time <- proc.time()
-    # message("FUNCTION TIME")
-    # res <- tryCatch({
-    #     ewas_func(temp_phen, temp_meth, phen, cc, covs, IID)
-    # }, error = function(e) {
-    #     usr_m <- paste0("Error in EWAS of ", phen, " using ", method, ".")
-    #     err_msg(e, r_msg = TRUE, user_msg = usr_m, to_return = phen)        
-    # })
-    # time_taken <- proc.time() - start_time
-    # print(time_taken) # 68 mins (4105.556 seconds) for CellDMC
-
-
-    model <- as.formula(paste0("methylation ~ ", paste(c(phen, covs), collapse = " + ")))
-    obj <- tryCatch({
-        ewaff.sites(model, variable.of.interest = phen,
-                           methylation = temp_meth, data = temp_phen, method = "glm",
-                           generate.confounders = NULL, family = "gaussian")
+    function_name <- paste0("run_", method)
+    ewas_func <- match.fun(function_name)
+    # p_to_keep <- p_to_keep[1]
+    start_time <- proc.time()
+    message("FUNCTION TIME")
+    res <- tryCatch({
+        ewas_func(temp_phen, temp_meth, phen, temp_cc, covs, IID)
     }, error = function(e) {
-        usr_m <- paste0("Error in EWAS of ", phen)
-        err_msg(e, r_msg = TRUE, user_msg = usr_m, to_return = phen)
+        usr_m <- paste0("Error in EWAS of ", phen, " using ", method, ".")
+        err_msg(e, r_msg = TRUE, user_msg = usr_m, to_return = phen)        
     })
-    return(obj)
+    time_taken <- proc.time() - start_time
+    print(time_taken) # 68 mins (4105.556 seconds) for CellDMC
+    return(res)
 }
 
 # ----------------------------------------
@@ -316,6 +308,16 @@ run_ewas <- function(phen, p_dat, cc, meth_dat, IID, method, covs)
 get_method <- function(out_file) basename(dirname(out_file))
 
 cell_types <- colnames(cell_counts)
+
+cell_counts_copy <- cell_counts
+cell_counts <- cell_counts_copy
+# cell_counts <- cell_counts[1:50, ]
+meth_copy <- meth
+meth <- meth_copy
+# meth <- meth[1:50, 1:50]
+phen_dat_copy <- phen_dat
+# phen_dat <- phen_dat[1:50, ]
+phen_dat <- phen_dat_copy
 
 lapply(out_files, function(out_file) {
     method <- get_method(out_file)
@@ -344,21 +346,5 @@ lapply(out_files, function(out_file) {
     save(out_res, file = out_file)
     rm(list = c("out_res", "ewas_res"))
 })
-
-# obj <- run_ewas(phen = trait, 
-#                      p_dat = phen_dat, 
-#                      cc = cell_counts, 
-#                      meth_dat = meth,
-#                      IID = "Sample_Name", 
-#                      method = NA, 
-#                      covs = covs)
-
-# res <- obj$table %>%
-#     rownames_to_column(var = "probeID") %>%
-#     dplyr::select(probeID, estimate, se, p.value) %>%
-#     mutate(Details = NA)
-
-# write.table(res, file = out_files, sep = "\t", col.names = T, row.names = F, quote = F)
-
 
 print("FIN")
