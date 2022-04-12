@@ -255,7 +255,7 @@ sort_toast <- function(toast_res)
     return(toast_out)
 }
 
-run_ewaff <- function(temp_phen, temp_meth, phen, covs, IID)
+run_ewaff <- function(temp_phen, temp_meth, phen, cc, covs, IID)
 {
     model <- as.formula(paste0("methylation ~ ", paste(c(phen, covs), collapse = " + ")))
     out <- ewaff.sites(model, variable.of.interest = phen,
@@ -268,7 +268,7 @@ sort_ewaff <- function(ewaff_res)
 {
     list(beta = ewaff_res$table$estimate, 
          se = ewaff_res$table$se, 
-         p = ewaff_res$table$p)
+         p = ewaff_res$table$p.value)
 }
 
 run_ewas <- function(phen, p_dat, cc, meth_dat, IID, method, covs) 
@@ -308,16 +308,6 @@ run_ewas <- function(phen, p_dat, cc, meth_dat, IID, method, covs)
 get_method <- function(out_file) basename(dirname(out_file))
 
 cell_types <- colnames(cell_counts)
-
-cell_counts_copy <- cell_counts
-cell_counts <- cell_counts_copy
-# cell_counts <- cell_counts[1:50, ]
-meth_copy <- meth
-meth <- meth_copy
-# meth <- meth[1:50, 1:50]
-phen_dat_copy <- phen_dat
-# phen_dat <- phen_dat[1:50, ]
-phen_dat <- phen_dat_copy
 
 lapply(out_files, function(out_file) {
     method <- get_method(out_file)

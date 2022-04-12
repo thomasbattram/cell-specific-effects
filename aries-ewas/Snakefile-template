@@ -7,7 +7,7 @@ import pandas as pd
 wd = os.getcwd()
 ARIES_DATA_DIR = ""
 SCRATCH_WD = "/user/work/tb13101/cell-specific-effects/aries-ewas"
-METHODS = ["celldmc", "tca", "tcareg", "toast"]
+METHODS = ["celldmc", "tca", "tcareg", "toast", "ewaff"]
 
 ## Extract traits from meta-data
 meta_file = SCRATCH_WD + "/data/metadata.tsv"
@@ -19,6 +19,7 @@ rule all:
         expand(SCRATCH_WD + "/data/svs/{trait}.tsv", trait = TRAITS),
         expand(SCRATCH_WD + "/results/ewas-res/{method}/{trait}.RData", method = METHODS, trait = TRAITS) 
 
+## Generate surrogate variables for each of the traits
 rule gen_svs:
     input:
         script = wd + "/scripts/gen-svs.R",
@@ -40,25 +41,7 @@ rule gen_svs:
                                         '{output.results}' \
                                         '{output.removed}' """
 
-# rule combine_covariates:
-#     input:
-#         script = wd + "/scripts/combine-covariates.R",
-#         pheno = SCRATCH_WD + "/data/aries-fom-phenotype-data.tsv",
-#         meta = meta_file,
-#         aries_dir = ARIES_DATA_DIR
-#     output:
-#         SCRATCH_WD + "data/covars.tsv", 
-#     shell:
-#         "echo $HOSTNAME; Rscript {input.script} '{input.pheno}' '{input.meta}' '{input.aries_dir}' '{output}'"
-
-def ewas_out(path, methods, trait):
-    outlist = []
-    for meth in methods:
-        outlist.append(path + "/" + meth + "_res_split_" + trait + ".RData")
-    return outlist
-      
-ewas_out(SCRATCH_WD + "/results/ewas-res", METHODS, "Alb_FOM1")
-
+## Run the EWAS using each method
 rule run_ewas:
     input:
         script = wd + "/scripts/ewas.R",
@@ -71,7 +54,7 @@ rule run_ewas:
     output:
         out = expand(SCRATCH_WD + "/results/ewas-res/{method}/{{trait}}.RData", method = METHODS)
     params:
-        failed_out = SCRATCH_WD + "results/ewas-res/failed-ewas.tsv"
+        failed_out = SCRATCH_WD + "/results/ewas-res/failed-ewas.tsv"
     shell:
         """echo $HOSTNAME; Rscript {input.script} \
                                         '{input.pheno}' \
@@ -82,6 +65,9 @@ rule run_ewas:
                                         '{input.aries_dir}' \
                                         '{output.out}' \
                                         '{params.failed_out}' """
+
+## Check for replication using omicWAS
+
 
 ## Compare to just normal EWAS
 # rule compare_res
