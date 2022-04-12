@@ -78,10 +78,11 @@ stopifnot(all(rownames(cell_counts) == phenotypes$Sample_Name))
 cell_counts[sign(cell_counts) == -1] <- 0
 
 ## Need to re-estimate cell props so they all add up to 1 for TCA to work...
+#' @param cc_mat matrix. cell proportions matrix with rows as people and columns as cell types
 reest_cell_props <- function(cc_mat)
 {
 	out_mat <- map_dfr(1:nrow(cc_mat), function(x) {
-		cc_mat[x,]/sum(cc_mat[x,])
+		cc_mat[x, ] / sum(cc_mat[x, ])
 	})
 	return(as.matrix(out_mat))
 }

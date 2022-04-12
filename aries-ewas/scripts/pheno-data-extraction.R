@@ -67,6 +67,7 @@ smoking_result %>%
 	pull(r6010) %>% 
 	table
 # r0610 has many more people, so going with that phenotype.
+## CAN COMBINE PHENOTYPES!!
 vars_of_interest <- c(ec_meta$alspac_name, "s1026", "r6010")
 
 new_current <- current %>%
@@ -85,6 +86,35 @@ result <- extractVars(new_current)
 
 res <- result %>%
 	dplyr::filter(aln %in% IDs$ALN) 
+
+## LOOK AT PSO DATA
+pso_vars <- c("d164", "n1054", "r2014", "l3027", "g032", "f032", "k1027", "h024", "s1027", "j023", "p1027", "q4130", "s4130")
+pso_current <- current[current$name %in% pso_vars,]
+pso_res <- extractVars(pso_current)
+filt_pso_res <- pso_res[pso_res$aln %in% IDs$ALN, ]
+pso_labs <- extract_alspac_labels(pso_current, alspac_data_dir)
+
+lapply(pso_vars, function(v) {
+	filt_pso_res %>%
+		pull(v) %>%
+		table	
+})
+
+comb_pso_var <- sapply(1:nrow(filt_pso_res), function(x) {
+	temp_res <- filt_pso_res[x, pso_vars]
+	return(any(temp_res == 1 | temp_res == 2))
+})
+table(comb_pso_var)
+
+x <- vector(length = nrow(filt_pso_res))
+for (i in 1:length(x)) {
+	temp_res <- filt_pso_res[i, ]
+}
+pso_res %>%
+	dplyr::filter(aln %in% IDs$ALN) %>%
+	pull("s4130") %>%
+	table
+
 
 # check for aln and qlet columns.
 grep("aln|qlet", colnames(res), value = T)
