@@ -1,0 +1,20 @@
+{
+	"__default__" :
+	{
+		"name": "{rule}",
+		"nodes": "1",
+		"ncpu": "1",
+		"ntask": "1",
+		"time": "1:00:00",
+		"mem": "32G",
+		"output": "job-reports/{rule}-{jobid}.out", 
+		"error": "job-reports/{rule}-{jobid}.error"
+	},
+
+	"run_ewas" :
+	{
+		"mem": "100G",
+		"time": "24:00:00", 
+		"ncpu": "6"
+	}
+}
