@@ -23,21 +23,31 @@ out_file <- args[4]
 # ewas_resdir <- "results/ewas-res"
 # traits_file <- "data/traits.txt"
 # ## traits_file <- "data/test-traits.txt"
-# out_file <- "results/summary.tsv"
+# out_file <- "results/summary.RData"
 
 ## data
 meta_file <- read_tsv(meta_file)
 traits <- readLines(traits_file)
-names(traits) <- c("BMI", "Smoking")
-original_ewas_files <- c("data/DV__BMI__FOM1.txt", "results/ewas-res/r6010.tsv")
-names(original_ewas_files) <- c("BMI", "Smoking")
-original_ewas <- lapply(original_ewas_files, read_tsv)
-names(original_ewas) <- names(original_ewas_files)
-## function for reading in data for each trait
+methods <- c("celldmc", "tca", "tcareg", "toast", "ewaff")
 
-methods <- c("celldmc", "tca", "tcareg", "omicwas", "toast")
-# methods <- c("celldmc", "tca", "omicwas", "toast")
+## structure:
+## 1. Extract results at p<1e-5 from each EWAS (and save these results)
+## 2. Plot a summary of hits per method across EWAS
+## 3. Assess replication of hits across each EWAS
+## 4. Assess differences between cs methods and ewaff
+	## a. including checking if meta-analysis will recapitulate ewaff
+## 5. Assess hits per cell type (plot along with cell type proportions?)
 
+# ----------------------------------------
+# Extract results at p<1e-5
+# ----------------------------------------
+
+#' Extract specific CpGs or CpGs associated with the trait of interest at a specific P value
+#' 
+#' @param res trait and method specific results output from the "ewas.R" script
+#' @param cpg character vector of CpG sites to extract
+#' @param p_threshold numeric. P value threshold - any associations with a P less than this will be extracted
+#' @return tibble with columns: "CpG", "beta", "se", "p", "cell_type"
 sort_res <- function(res, cpg = NULL, p_threshold = 1e-5) 
 {
 	sig_res <- res$p %>%
@@ -74,19 +84,80 @@ sort_res <- function(res, cpg = NULL, p_threshold = 1e-5)
 	return(out_res)
 }
 
+# traits <- traits[1:50]
+start_time <- proc.time()
 all_res <- lapply(traits, function(trait) {
+	print(trait)
 	out <- lapply(methods, function(method) {
 		print(method)
 		res_file <- paste0(method, "/", trait, ".RData")
 		res_path <- file.path(ewas_resdir, res_file)
+		if (!file.exists(res_path)) {
+			warning(res_path, " does not exist.")
+			return(NULL)
+		}
 		ewas_res <- new_load(res_path)
-		out <- sort_res(ewas_res, p_threshold = 1e-7)
+		out <- sort_res(ewas_res, p_threshold = 1e-5)
+		print(out)
 		return(out)
 	})
 	names(out) <- methods
 	return(out)
 })
-names(all_res) <- names(traits)
+names(all_res) <- traits
+time_taken <- proc.time() - start_time
+time_taken # 4536.853 elapsed (~1.25hours)
+
+save(all_res, file = out_file)
+
+# ----------------------------------------
+# Plot a summary of hits per method
+# ----------------------------------------
+
+## bar chart with cell type groups and a group of "total" hits
+
+## Get hits at conventional threshold from results
+# all_res <- new_load(out_file)
+plot_res <- lapply(all_res, bind_rows, .id = "method") %>%
+	bind_rows(.id = "trait") %>%
+	dplyr::filter(p < 1e-7)
+
+plot_res_summ <- plot_res %>%
+	group_by(cell_type, method) %>%
+	summarize(hits = n())	
+
+total_m_hits <- plot_res_summ %>%
+	group_by(method) %>%
+	summarize(hits = sum(hits)) %>%
+	mutate(cell_type = "Combined")
+
+comb_plot_res <- bind_rows(plot_res_summ, total_m_hits) %>%
+	dplyr::filter(cell_type != ".")
+
+ewaff_res_hits <- comb_plot_res[comb_plot_res$method == "ewaff", "hits", drop = T]
+plot_text <- paste0("Number of associations across all conventional EWAS = ", ewaff_res_hits)
+cols <- get_cb_palette()[1:length(methods)]
+ct <- unique(plot_res_summ$cell_type)[unique(plot_res_summ$cell_type) != "."]
+x_axis_labs <- c(ct, "Combined")
+summ_plot <- ggplot(comb_plot_res, aes(x = cell_type, y = hits, group = method, fill = method)) +
+	geom_bar(stat = "identity", position = position_dodge()) +
+	scale_fill_manual(values = cols) + 
+	scale_x_discrete(limits = x_axis_labs) + 
+	annotate(geom = "text", x = 4, y = 7500, label = plot_text, colour = "red", size = 3) + 
+	labs(x = "Cell type", y = "Associations at P < 1x10-7") +
+	theme_bw()
+
+ggsave("results/summary-of-ewas-hits.png", plot = summ_plot)
+
+## Summary across traits (see if any driving things)
+plot_res %>%
+	group_by(cell_type, method, trait) %>%
+	summarize(n_hits = n()) %>%
+	group_by(cell_type, method) %>%
+	summarize(max = max(n_hits), min = min(n_hits), median = median(n_hits), mean = mean(n_hits), 
+			  total = sum(n_hits))
+
+##
 
 ## To do:
 # 1. Get normal EWAS results for BMI from EWAS Catalog res
@@ -98,6 +169,34 @@ names(all_res) <- names(traits)
 ## 2a.
 
 get_hits <- function(res, p_threshold) dplyr::filter(res, p.value < p_threshold) %>% arrange(p.value)
+
+names(all_res)
+
+celldmc_res <- bind_rows(map(all_res, "celldmc"), .id = "trait")
+tca_res <- bind_rows(map(all_res, "tca"), .id = "trait")
+tcareg_res <- bind_rows(map(all_res, "tcareg"), .id = "trait")
+toast_res <- bind_rows(map(all_res, "toast"), .id = "trait")
+ewaff_res <- bind_rows(map(all_res, "ewaff"), .id = "trait")
+
+lapply(methods, function(method) {
+	temp <- bind_rows(map(all_res, method), .id = "trait")
+	table(temp$cell_type)
+})
+
+## SHIT ON IT!! UNSURE WHAT CPGS ARE IN EWAFF RES!!!
+
+x <- 1e-7/50
+
+tca_res %>%
+	dplyr::filter(CpG %in% celldmc_res$CpG)
+celldmc_res %>%
+	dplyr::filter(CpG %in% tca_res$CpG)
+
+
+celldmc_res %>% dplyr::filter(p < x)
+tca_res %>% dplyr::filter(p < x)
+tcareg_res %>% dplyr::filter(p < x)
+toast_res %>% dplyr::filter(p < x)
 
 ## BMI
 ori_res <- get_hits(original_ewas[["BMI"]], 1e-7) %>%
