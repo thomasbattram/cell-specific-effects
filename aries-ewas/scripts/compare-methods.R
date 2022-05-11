@@ -23,7 +23,10 @@ out_file <- args[4]
 # ewas_resdir <- "results/ewas-res"
 # traits_file <- "data/traits.txt"
 # ## traits_file <- "data/test-traits.txt"
-# out_file <- "results/summary.RData"
+# hits_out_file <- "results/extracted-hits.RData"
+# summ_out_file <- "results/summary.RData"
+# rep_out_file <- "results/replication-data.RData"
+# hits_plot_file <- "results/summary-of-ewas-hits.png"
 
 ## data
 meta_file <- read_tsv(meta_file)
@@ -37,6 +40,18 @@ methods <- c("celldmc", "tca", "tcareg", "toast", "ewaff")
 ## 4. Assess differences between cs methods and ewaff
 	## a. including checking if meta-analysis will recapitulate ewaff
 ## 5. Assess hits per cell type (plot along with cell type proportions?)
+
+### SORT ARIES DATA
+meth_file <- "../sims/data/aries_fom.RData"
+aries_meth <- new_load(meth_file)
+cpg_nams_and_rows <- tibble(rown = 1:nrow(aries_meth), cpg = rownames(aries_meth))
+rm(aries_meth)
+
+## Checking AHRR CpG present in smoking EWAS
+# cpg_nams_and_rows[cpg_nams_and_rows$cpg == "cg05575921", ]
+# all_res[["r6010"]]$ewaff %>% arrange(p)
+
+## It's there!! woop woop
 
 # ----------------------------------------
 # Extract results at p<1e-5
@@ -108,7 +123,7 @@ names(all_res) <- traits
 time_taken <- proc.time() - start_time
 time_taken # 4536.853 elapsed (~1.25hours)
 
-save(all_res, file = out_file)
+save(all_res, file = hits_out_file)
 
 # ----------------------------------------
 # Plot a summary of hits per method
@@ -117,10 +132,25 @@ save(all_res, file = out_file)
 ## bar chart with cell type groups and a group of "total" hits
 
 ## Get hits at conventional threshold from results
-# all_res <- new_load(out_file)
+# all_res <- new_load(hits_out_file)
 plot_res <- lapply(all_res, bind_rows, .id = "method") %>%
 	bind_rows(.id = "trait") %>%
 	dplyr::filter(p < 1e-7)
+
+## remove instances where method couldn't run
+all_files <- expand.grid(trait = traits, method = methods) %>%
+	mutate(file = paste0(method, "/", trait, ".RData"), 
+		   full_path = file.path(ewas_resdir, file))
+
+completed_analyses <- sapply(traits, function(tra) {
+	trait_files <- all_files[all_files$trait == tra, ]
+	files_exist <- file.exists(trait_files$full_path)
+	ifelse(all(files_exist), return(TRUE), return(FALSE))
+})
+
+bad_traits <- names(completed_analyses)[!completed_analyses]
+
+plot_res <- dplyr::filter(plot_res, !trait %in% bad_traits)
 
 plot_res_summ <- plot_res %>%
 	group_by(cell_type, method) %>%
@@ -147,17 +177,101 @@ summ_plot <- ggplot(comb_plot_res, aes(x = cell_type, y = hits, group = method, 
 	labs(x = "Cell type", y = "Associations at P < 1x10-7") +
 	theme_bw()
 
-ggsave("results/summary-of-ewas-hits.png", plot = summ_plot)
+ggsave(hits_plot_file, plot = summ_plot)
 
 ## Summary across traits (see if any driving things)
-plot_res %>%
+hit_summ <- plot_res %>%
 	group_by(cell_type, method, trait) %>%
 	summarize(n_hits = n()) %>%
 	group_by(cell_type, method) %>%
 	summarize(max = max(n_hits), min = min(n_hits), median = median(n_hits), mean = mean(n_hits), 
 			  total = sum(n_hits))
 
-##
+# ----------------------------------------
+# Replication across methods 
+# ----------------------------------------
+
+trait_meth_combos <- plot_res %>%
+	dplyr::select(trait, method) %>% 
+	distinct()
+all_rep_res <- lapply(1:nrow(trait_meth_combos), function(i) {
+	print(i)
+	tmc <- trait_meth_combos[i, ]
+	res_of_int <- plot_res %>%
+		dplyr::filter(trait == tmc$trait, method == tmc$method)
+	cpg_of_int <- res_of_int$CpG
+	files_to_check <- all_files %>%
+			dplyr::filter(trait == tmc$trait, method != tmc$method)
+	other_res <- map_dfr(1:nrow(files_to_check), function(x) {
+		f2c <- files_to_check[x, ]
+		ewas_res <- new_load(f2c$full_path)
+		if (f2c$method == "ewaff") {
+			ewas_res <- lapply(ewas_res, function(er) { names(er) <- cpg_nams_and_rows$cpg; return(er) })
+		}
+		out <- sort_res(ewas_res, cpg = cpg_of_int, p_threshold = 1)
+		out$method <- f2c$method
+		return(out)
+	})
+	out <- other_res %>%
+		dplyr::filter(cell_type %in% c(res_of_int$cell_type, ".")) %>%
+		mutate(trait = tmc$trait) %>%
+		bind_rows(res_of_int)
+	return(out)
+})
+
+save(all_rep_res, file = rep_out_file)
+
+## WRITE CODE TO ASSESS REPLICATION PROPERLY HERE!! 
+# 1. direction of effect
+# 2. p value replication at p<0.05/N_traits
+# 3. heterogeneity of effects between CellDMC and TCA
+
+# ----------------------------------------
+# Meta-analysis of res
+# ----------------------------------------
+
+## Does meta-analysing res give same results as conventional EWAS?
+# use CellDMC and TCA for this! 
+
+## NEED TO ADD IN TCA RES AND FIGURE OUT HOW TO SORT DATA PROPERLY
+
+traits_to_test <- 10
+all_cpgs <- cpg_nams_and_rows$cpg
+set.seed(2)
+test_cpgs <- sample(all_cpgs, 100)
+good_traits <- traits[!traits %in% bad_traits]
+lapply(1:traits_to_test, function(x) {
+	test_t <- good_traits[x]
+	file_res <- all_files %>%
+		dplyr::filter(trait == test_t, method %in% c("celldmc", "tca", "ewaff"))
+	ewas_res <- new_load(file_res$full_path[1])
+	ewaff_res <- new_load(file_res$full_path[3])
+	ewaff_res <- lapply(ewaff_res, function(er) { names(er) <- cpg_nams_and_rows$cpg; return(er) })
+	out <- sort_res(ewas_res, p_threshold = 1, cpg = test_cpgs)
+	ewaff_out <- sort_res(ewaff_res, p_threshold = 1, cpg = test_cpgs)
+	celldmc_test_res <- map_dfr(test_cpgs, function(cpg) {
+		in_data <- out %>%
+			dplyr::filter(CpG == cpg)
+		m_gen <- metagen(TE = beta, 
+					 seTE = se, 
+					 studlab = cell_type, 
+					 data = in_data, 
+					 fixed = TRUE, 
+					 random = FALSE)	
+		tibble(CpG = cpg, beta = m_gen$TE.fixed)
+	})
+	temp <- left_join(celldmc_test_res, ewaff_out, by = c("CpG" = "CpG"))
+	cor(temp$beta.x, temp$beta.y)
+})
+
+m.gen <- metagen(TE = TE,
+                 seTE = seTE,
+                 studlab = Author,
+                 data = ThirdWave,
+                 sm = "SMD",
+                 fixed = TRUE,
+                 random = FALSE)
+
 
 ## To do:
 # 1. Get normal EWAS results for BMI from EWAS Catalog res
